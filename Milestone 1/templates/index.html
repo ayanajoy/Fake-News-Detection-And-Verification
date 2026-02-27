@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fake News Detection</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="main-wrapper">
+
+    <div class="container">
+
+        <div class="header">
+            <h1>Fake News Detection</h1>
+            <p>AI-powered news authenticity verification system</p>
+        </div>
+
+        <form action="/predict" method="post">
+
+            <label>Enter News Content</label>
+
+            <textarea name="text" rows="6"
+                placeholder="Paste the news article or headline here..."
+                required></textarea>
+
+            <button type="submit">
+                Analyze News
+            </button>
+
+        </form>
+
+        {% if prediction %}
+        <div class="result-card">
+
+            <div class="result-header">
+                Analysis Result
+            </div>
+
+            <div class="prediction {% if prediction == 'Real News' %}real-bg{% else %}fake-bg{% endif %}">
+                {{ prediction }}
+            </div>
+
+            <div class="confidence-section">
+
+                <div class="confidence-item">
+                    <span>Real News Confidence</span>
+                    <div class="bar">
+                        <div class="fill real-fill"
+                             style="width: {{ real }}%"></div>
+                    </div>
+                    <span>{{ real }}%</span>
+                </div>
+
+                <div class="confidence-item">
+                    <span>Fake News Confidence</span>
+                    <div class="bar">
+                        <div class="fill fake-fill"
+                             style="width: {{ fake }}%"></div>
+                    </div>
+                    <span>{{ fake }}%</span>
+                </div>
+
+            </div>
+
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+</html>
