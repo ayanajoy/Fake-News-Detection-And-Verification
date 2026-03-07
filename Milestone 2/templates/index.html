@@ -3,49 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake News Detection</title>
+    <title>NLP Analyzer | Professional Text Intelligence</title>
+    <!-- Modern Font & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="{{url_for('static',filename='style.css')}}">
 </head>
+
 <body>
-<div class="container">
-    <h1>NLP Processor</h1>
+    <div class="app-wrapper">
+        <div class="container fade-in">
+            <div class="header">
+                <div class="logo-box">
+                    <i data-lucide="brain-circuit"></i>
+                </div>
+                <h1>NLP <span class="text-accent">Processor</span></h1>
+                <p>Advanced natural language understanding and entity extraction.</p>
+            </div>
 
-    <form method="POST">
-        <textarea name="text"
-        rows="6"
-        cols="60"
-        placeholder="Paste the news here..." required>
-    </textarea>
-    <br><br>
-    <button type="submit">Process Text</button>
-    </form>
+            <main class="main-content">
+                <form method="POST" class="analyzer-form">
+                    <div class="input-group">
+                        <label for="text-input">
+                            <i data-lucide="align-left"></i> Source Text
+                        </label>
+                        <textarea 
+                            id="text-input"
+                            name="text" 
+                            rows="6" 
+                            placeholder="Paste your text here for deep analysis..." 
+                            required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">
+                        <span>Process Analysis</span>
+                        <i data-lucide="sparkles"></i>
+                    </button>
+                </form>
 
-    {% if tokens %}
-    <div class="output">
-        <div>
-            <h2 class="section-title">Tokens:</h2>
-            <div class="box">
-                {{ tokens }}
-            </div>
+                {% if tokens %}
+                <div class="results-grid slide-up">
+                    <!-- Tokens Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i data-lucide="segmentation"></i>
+                            <h3>Tokens</h3>
+                        </div>
+                        <div class="card-body scroll-box">
+                            <div class="token-cloud">
+                                {{ tokens }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lemmas Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <i data-lucide="binary"></i>
+                            <h3>Lemmas</h3>
+                        </div>
+                        <div class="card-body scroll-box">
+                            <div class="lemma-content">
+                                {{ lemmas }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Entities Card -->
+                    <div class="card full-width">
+                        <div class="card-header">
+                            <i data-lucide="database"></i>
+                            <h3>Named Entities</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="entity-list">
+                                {% for i in entities %}
+                                    <div class="entity-tag">
+                                        <span class="entity-text">{{ i[0] }}</span>
+                                        <span class="entity-label">{{ i[1] }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </main>
         </div>
-        <div>
-            <h2 class="section-title">Lemmas:</h2>
-            <div class="box">
-                {{ lemmas }}
-            </div>
-        </div>
-        <div>
-            <h2 class="section-title">Entities:</h2>
-            <div class="box">
-                <ul>
-                    {% for i in entities %}
-                        <li>{{ i[0] }} ({{ i[1] }})</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+        
+        <footer class="footer">
+            <p>&copy; 2024 AI Text Laboratory • Secure Processing</p>
+        </footer>
     </div>
-    {% endif %}
-</div>
+
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>
