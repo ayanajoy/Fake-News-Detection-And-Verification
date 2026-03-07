@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>News Verification Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --primary: #0f172a; 
+    --accent: #10b981;  
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --danger: #ef4444;
+    --success: #10b981;
+    --radius: 12px;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { 
+    background-color: var(--bg); 
+    color: var(--text-main); 
+    font-family: 'Inter', sans-serif; 
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Navigation */
+  .navbar {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-title { font-weight: 700; font-size: 0.9rem; letter-spacing: 1.5px; text-transform: uppercase; }
+
+  .container { max-width: 1100px; margin: 40px auto; padding: 0 24px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+  }
+
+  .section-header { margin-bottom: 24px; }
+  .section-header h1 { font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+  .section-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+  /* Input Section */
+  textarea { 
+    width: 100%; min-height: 220px; padding: 20px; border-radius: 8px; 
+    border: 1px solid var(--border); font-family: inherit; font-size: 1rem; 
+    background: #fff; transition: all 0.2s ease; margin-bottom: 16px;
+    resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+
+  .button-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  
+  .analyze-btn { 
+    background: var(--primary); color: white; padding: 14px 32px; border-radius: 8px; 
+    border: none; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .analyze-btn:hover { background: #1e293b; transform: translateY(-1px); }
+
+  .samples-container { display: flex; gap: 8px; align-items: center; }
+  .sample-badge {
+    background: #f1f5f9; border: 1px solid var(--border); color: var(--text-muted);
+    padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .sample-badge:hover { border-color: var(--accent); color: var(--accent); background: white; }
+
+  /* Loading State */
+  .loading-area { display: none; max-width: 500px; margin: 60px auto; text-align: left; }
+  .loading-area.visible { display: block; }
+  
+  .loading-step {
+    display: flex; align-items: center; gap: 15px; margin-bottom: 16px;
+    font-size: 0.95rem; color: var(--text-muted); opacity: 0.5; transition: all 0.4s;
+  }
+  .loading-step.active { color: var(--primary); font-weight: 600; opacity: 1; }
+  .loading-step.done { color: var(--success); opacity: 0.8; }
+  .step-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid currentColor; font-size: 10px; }
+
+  /* Results Dashboard */
+  .results { display: none; animation: fadeIn 0.5s ease-out; }
+  .results.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Result Grid Layout */
+  .res-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .res-grid { grid-template-columns: 1fr; } }
+
+  .verdict-box {
+    padding: 24px; border-radius: 12px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .box-FAKE { background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; }
+  .box-REAL { background: #f0fdf4; border: 1px solid #dcfce7; color: #166534; }
+
+  .score-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+  .bar-container { height: 10px; background: #f1f5f9; border-radius: 5px; margin: 12px 0; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 5px; transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  .data-section-title {
+    font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .data-section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .metric-pill { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; padding: 8px 0; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
+  
+  .claim-card { padding: 12px 16px; background: #f8fafc; border-left: 4px solid var(--primary); border-radius: 4px; margin-bottom: 12px; font-size: 0.9rem; }
+
+  .verif-grid { display: grid; gap: 16px; }
+  .verif-item { padding: 16px; border-radius: 8px; border: 1px solid var(--border); background: white; transition: transform 0.2s; }
+  .verif-item:hover { transform: translateX(5px); border-color: var(--accent); }
+  .status-badge { font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 8px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-title">News Verification Portal</div>
+  <div style="font-size: 0.7rem; font-family: 'JetBrains Mono'; color: var(--accent);">STAGING V3.2</div>
+</nav>
+
+<div class="container">
+  
+  <div id="inputSection" class="card">
+    <div class="section-header">
+      <h1>Verification Engine</h1>
+      <p>Analyze text authenticity using RoBERTa neural classification and Google Fact Check cross-referencing.</p>
+    </div>
+    <textarea id="newsInput" placeholder="Paste the news article or claim here..."></textarea>
+    
+    <div class="button-row">
+      <div class="samples-container">
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">Samples:</span>
+        <div class="sample-badge" onclick="loadSample('fake')">Medical Myth</div>
+        <div class="sample-badge" onclick="loadSample('real')">Economy News</div>
+      </div>
+      <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+        Analyze Content
+      </button>
+    </div>
+  </div>
+
+  <div id="loading" class="loading-area">
+    <h2 style="margin-bottom: 32px; font-weight: 800;">Processing Pipeline</h2>
+    <div class="loading-step" id="step1"><div class="step-icon">1</div> Clean & tokenize input text</div>
+    <div class="loading-step" id="step2"><div class="step-icon">2</div> Run lemmatization & stopword removal</div>
+    <div class="loading-step" id="step3"><div class="step-icon">3</div> RoBERTa neural model inference</div>
+    <div class="loading-step" id="step4"><div class="step-icon">4</div> Extract factual claim sentences</div>
+    <div class="loading-step" id="step5"><div class="step-icon">5</div> Cross-reference Google Fact Check API</div>
+  </div>
+
+  <div id="results" class="results">
+    
+    <div id="verdictBox" class="verdict-box">
+      <div>
+        <span style="text-transform: uppercase; font-size: 0.75rem; font-weight: 700; opacity: 0.8;">Primary Classification</span>
+        <h2 id="predictionText" style="font-size: 2.25rem; font-weight: 900;">---</h2>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-weight: 700;" id="timestamp"></div>
+        <div style="font-size: 0.8rem; opacity: 0.7;">Verified via RoBERTa v2</div>
+      </div>
+    </div>
+
+    <div class="res-grid">
+      <div>
+        <div class="card">
+          <div class="data-section-title">Factual Breakdown</div>
+          <div id="claimsList"></div>
+          
+          <div class="data-section-title" style="margin-top: 32px;">External Verification Results</div>
+          <div id="verifList" class="verif-grid"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="data-section-title">Model Confidence</div>
+          
+          <div style="margin-bottom: 20px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600;">
+              <span>Fake Score</span>
+              <span id="fakePct" style="color:var(--danger)">0%</span>
+            </div>
+            <div class="bar-container"><div id="fakeBar" class="bar-fill" style="background:var(--danger); width:0%"></div></div>
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600;">
+              <span>Real Score</span>
+              <span id="realPct" style="color:var(--success)">0%</span>
+            </div>
+            <div class="bar-container"><div id="realBar" class="bar-fill" style="background:var(--success); width:0%"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="data-section-title">Processing Metrics</div>
+          <div id="prepSteps"></div>
+        </div>
+
+        <button onclick="location.reload()" style="width:100%; padding:12px; background:none; border:1px solid var(--border); border-radius:8px; color:var(--text-muted); cursor:pointer; font-weight:600; transition:all 0.2s;">
+          Analyze New Article
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SAMPLES = {
+    fake: "BREAKING: A new study from an anonymous whistleblower confirms that common tap water contains a secret chemical that overrides human willpower. The government plans to activate this on Friday. Share this before it is taken down!",
+    real: "The European Central Bank kept its key interest rate unchanged at 4.0% during its latest policy meeting, noting that while inflation is declining, price pressures remain high due to domestic wage growth and geopolitical tensions."
+  };
+
+  function loadSample(type) {
+    document.getElementById('newsInput').value = SAMPLES[type];
+  }
+
+  async function animateLoading() {
+    const steps = ['step1', 'step2', 'step3', 'step4', 'step5'];
+    for (let i = 0; i < steps.length; i++) {
+      const el = document.getElementById(steps[i]);
+      el.className = 'loading-step active';
+      await new Promise(r => setTimeout(r, 650)); 
+      if (i < steps.length - 1) el.className = 'loading-step done';
+    }
+  }
+
+  async function analyze() {
+    const text = document.getElementById('newsInput').value.trim();
+    if (!text) return;
+
+    document.getElementById('inputSection').style.display = 'none';
+    document.getElementById('loading').classList.add('visible');
+    
+    animateLoading();
+
+    try {
+      const response = await fetch("/analyze", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await response.json();
+      
+      // Delay slightly to finish visual steps
+      setTimeout(() => {
+        document.getElementById('loading').classList.remove('visible');
+        showResults(data);
+      }, 3500);
+
+    } catch (err) {
+      alert("Error: Backend server not reachable.");
+      location.reload();
+    }
+  }
+
+  function showResults(data) {
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('timestamp').textContent = new Date().toLocaleTimeString();
+    
+    const vBox = document.getElementById('verdictBox');
+    vBox.className = 'verdict-box box-' + data.prediction;
+    document.getElementById('predictionText').textContent = data.prediction + " NEWS";
+
+    const fVal = (data.fake_score * 100).toFixed(1);
+    const rVal = (data.real_score * 100).toFixed(1);
+    
+    document.getElementById('fakePct').textContent = fVal + "%";
+    document.getElementById('realPct').textContent = rVal + "%";
+    document.getElementById('fakeBar').style.width = fVal + "%";
+    document.getElementById('realBar').style.width = rVal + "%";
+
+    document.getElementById('prepSteps').innerHTML = data.preprocessing.map(s => {
+      const parts = s.split(':');
+      return `<div class="metric-pill"><span>${parts[0]}</span><span style="color:var(--primary); font-weight:600;">${parts[1] || ''}</span></div>`;
+    }).join('');
+
+    document.getElementById('claimsList').innerHTML = data.claims.map(c => `<div class="claim-card">${c}</div>`).join('');
+    
+    document.getElementById('verifList').innerHTML = data.verification_results.map(v => `
+      <div class="verif-item">
+        <span class="status-badge" style="background:${v.status === 'FALSE' ? '#fee2e2' : v.status === 'TRUE' ? '#dcfce7' : '#f1f5f9'}; color:${v.status === 'FALSE' ? '#991b1b' : v.status === 'TRUE' ? '#166534' : '#64748b'};">${v.status}</span>
+        <p style="font-size:0.85rem; color:var(--text-main); font-weight:500;">${v.claim}</p>
+      </div>
+    `).join('');
+  }
+</script>
+</body>
+</html>
