@@ -1,204 +1,341 @@
 import streamlit as st
 import requests
+import pandas as pd
 import time
-import json
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Fake News Detection and Verification Tool", layout="wide", page_icon="📰")
+# ---------------- PAGE CONFIG ---------------- #
 
-st.markdown(
-    """
-    <style>
-    .app-header {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      margin-bottom: 8px;
-    }
-    .app-title {
-      font-family: 'Inter', sans-serif;
-      font-weight: 800;
-      font-size: 36px;
-      color: #0f172a;
-      margin: 0;
-    }
-    .app-sub {
-      color: #64748b;
-      margin-top: 6px;
-      font-size: 14px;
-    }
-    .card {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 18px;
-      box-shadow: 0 6px 20px rgba(16,24,40,0.06);
-      border: 1px solid #eef2ff;
-    }
-    .badge {
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      background:linear-gradient(90deg,#eef2ff,#f8fafc);
-      color:#4f46e5;
-      font-weight:700;
-      font-size:12px;
-      border:1px solid rgba(79,70,229,0.08);
-    }
-    .prediction-pill {
-      display:inline-block;
-      padding:10px 16px;
-      border-radius:10px;
-      font-weight:800;
-      color:#ffffff;
-      font-size:18px;
-    }
-    .pred-fake { background: linear-gradient(90deg,#ef4444,#dc2626); }
-    .pred-real { background: linear-gradient(90deg,#10b981,#059669); }
-    .label-sm { font-size:12px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; }
-    .detail-mono { font-family: monospace; font-size:13px; color:#0f172a; }
-    .small-muted { color:#64748b; font-size:13px; }
-    .claim-pill { background:#f8fafc; border-left:4px solid #4f46e5; padding:12px; border-radius:8px; margin-bottom:10px; }
-    .verif-card { padding:12px; border-radius:8px; background:#ffffff; border:1px solid #eef2ff; }
-    .v-true { border-left:4px solid #10b981; background:#f0fdf4; }
-    .v-false { border-left:4px solid #ef4444; background:#fff1f2; }
-    .step-active { color:#4f46e5; font-weight:700; }
-    .step-done { color:#10b981; font-weight:700; }
-    </style>
-    """,
-    unsafe_allow_html=True,
+st.set_page_config(
+    page_title="Fake News Detection and Verification Tool",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown(
-    """
-    <div class="app-header">
-      <div>
-        <div class="badge">Enterprise</div>
-      </div>
-      <div>
-        <div class="app-title">Fake News Detection and Verification Tool</div>
-        <div class="app-sub">Fast, transparent classification with claim-level verification and explainability.</div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# ---------------- PROFESSIONAL CSS ---------------- #
+
+st.markdown("""
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+.main {
+    background-color:#f4f6fb;
+}
+
+/* Card */
+.card{
+background:white;
+padding:1.5rem;
+border-radius:12px;
+border:1px solid #e6e8eb;
+box-shadow:0px 4px 12px rgba(0,0,0,0.05);
+margin-bottom:20px;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"]{
+background-color:#0f172a;
+}
+
+[data-testid="stSidebar"] p{
+color:#94a3b8;
+}
+
+/* Button */
+.stButton>button{
+width:100%;
+border-radius:8px;
+height:3em;
+background:#2563eb;
+color:white;
+font-weight:600;
+border:none;
+}
+
+.stButton>button:hover{
+background:#1d4ed8;
+}
+
+/* Suspicious phrases */
+.suspicious{
+background:#fee2e2;
+border-left:4px solid #dc2626;
+padding:10px;
+border-radius:6px;
+color:#7f1d1d;
+font-weight:600;
+}
+
+/* Trusted */
+.trusted{
+background:#dcfce7;
+border-left:4px solid #16a34a;
+padding:10px;
+border-radius:6px;
+color:#065f46;
+font-weight:600;
+}
+
+/* Untrusted */
+.untrusted{
+background:#fee2e2;
+border-left:4px solid #dc2626;
+padding:10px;
+border-radius:6px;
+color:#7f1d1d;
+font-weight:600;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- BACKEND API ---------------- #
 
 API = "http://127.0.0.1:5000/analyze"
 
-col_left, col_right = st.columns([2, 1])
+# ---------------- SESSION DATA ---------------- #
 
-with col_left:
-    text = st.text_area("Enter News Article", height=280)
-    if not text:
-        st.caption("Paste the full article or a claim to analyze. The system will extract claims and verify them against fact-check sources.")
-with col_right:
-    source = st.text_input("News Source")
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;'><span class='label-sm'>Quick Actions</span></div>", unsafe_allow_html=True)
-    sample1 = st.button("Sample: Medical Misinformation")
-    sample2 = st.button("Sample: Economic Report")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("<div class='label-sm'>System</div>", unsafe_allow_html=True)
-    st.markdown("<div class='small-muted'>Model</div><div class='detail-mono'>RoBERTa (custom)</div>", unsafe_allow_html=True)
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='small-muted'>Endpoint</div><div class='detail-mono'>%s</div>" % API, unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
-if sample1:
-    st.session_state['sample_loaded'] = True
-    text = "Scientists at Harvard University have developed a vaccine that provides 100% protection against all COVID-19 variants according to a new study published yesterday."
-    st.experimental_rerun()
-if sample2:
-    st.session_state['sample_loaded'] = True
-    text = "The Federal Reserve raised interest rates by 25 basis points in its latest policy meeting to combat rising inflation."
-    st.experimental_rerun()
+if 'stats' not in st.session_state:
+    st.session_state.stats = {"fake":0,"real":0,"claims":0}
 
-analyze_button = st.button("Analyze Article", key="analyze")
+# ---------------- SIDEBAR ---------------- #
 
-if analyze_button:
-    if not text or text.strip() == "":
-        st.error("Please provide article text before analysis.")
-    else:
-        steps = [
-            "Validating article structure",
-            "Cleaning & tokenizing",
-            "Lemmatizing & feature extraction",
-            "Running RoBERTa inference",
-            "Extracting candidate claims",
-            "Verifying claims with Fact Check API",
-            "Compiling explanation and metrics"
-        ]
-        step_placeholders = [st.empty() for _ in steps]
-        progress_bar = st.progress(0)
-        for i, step in enumerate(steps):
-            step_placeholders[i].markdown(f"<div class='step-active'>➤ {step}</div>", unsafe_allow_html=True)
-            progress_bar.progress(int(((i + 1) / len(steps)) * 100))
-            time.sleep(0.45)
-            step_placeholders[i].markdown(f"<div class='step-done'>✔ {step}</div>", unsafe_allow_html=True)
-        progress_bar.empty()
+with st.sidebar:
 
-        payload = {
-            "text": text,
-            "source": source
-        }
+    st.title("🛡️ Admin Dashboard")
 
-        with st.spinner("Contacting analysis service and fetching results..."):
-            try:
-                response = requests.post(API, json=payload, timeout=30)
-                result = response.json()
-            except Exception as e:
-                st.error("Analysis service error: %s" % str(e))
-                result = None
+    st.markdown("---")
 
-        if result:
-            st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-            pr_col1, pr_col2 = st.columns([2, 1])
-            with pr_col1:
-                pred = result.get("prediction", "N/A")
-                if pred == "FAKE":
-                    pill_html = f"<div class='prediction-pill pred-fake'>{pred}</div>"
-                else:
-                    pill_html = f"<div class='prediction-pill pred-real'>{pred}</div>"
-                st.markdown(pill_html, unsafe_allow_html=True)
-                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-                st.subheader("Explanation")
-                st.write(result.get("explanation", "No explanation returned."))
-                st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-                st.subheader("Suspicious Claims")
-                suspicious = result.get("suspicious_phrases", [])
-                if isinstance(suspicious, list) and suspicious:
-                    for s in suspicious:
-                        st.markdown(f"<div class='claim-pill'>{s}</div>", unsafe_allow_html=True)
-                else:
-                    st.info("No suspicious phrases extracted.")
-            with pr_col2:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                st.markdown("<div class='label-sm'>Source Trust</div>", unsafe_allow_html=True)
-                trusted = result.get("trusted_source", "Unknown")
-                st.markdown(f"<div style='font-size:18px;font-weight:700;margin-top:8px'>{trusted}</div>", unsafe_allow_html=True)
-                st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-                st.markdown("<div class='label-sm'>System Metrics</div>", unsafe_allow_html=True)
-                metrics = result.get("metrics", {})
+    page = st.radio(
+        "Navigation",
+        ["🚀 Analyze News","📊 System Overview","🕒 Analysis History"]
+    )
+
+    st.markdown("---")
+
+    st.caption("System Status: Operational")
+    st.caption("API Endpoint: 127.0.0.1:5000")
+
+    st.markdown("---")
+
+    st.markdown("### Model Info")
+    st.caption("Model: Fake News Classifier")
+    st.caption("Explainability: Rule-based")
+    st.caption("Deployment: Docker Container")
+
+# ---------------- ANALYZE PAGE ---------------- #
+
+def show_analyze():
+
+    st.title("🚀 Fake News Analyzer")
+
+    st.write("Analyze news articles using AI detection and explainability.")
+
+    col1,col2 = st.columns([1,1])
+
+    with col1:
+
+        text = st.text_area(
+            "News Article",
+            height=250,
+            placeholder="Paste the news article here..."
+        )
+
+        source = st.text_input(
+            "News Source",
+            placeholder="example.com"
+        )
+
+        analyze_btn = st.button("Run Analysis")
+
+    with col2:
+
+        if analyze_btn and text:
+
+            with st.spinner("Running AI analysis..."):
+
+                start_time = time.time()
+
                 try:
-                    st.json(metrics)
-                except:
-                    st.write(metrics)
-                st.markdown("</div>", unsafe_allow_html=True)
 
-            ver_col = st.container()
-            st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-            st.markdown("<div class='label-sm'>Verification Results</div>", unsafe_allow_html=True)
-            verifs = result.get("verification_results", []) or result.get("verification_results", [])
-            if verifs:
-                cols = st.columns(3)
-                for i, v in enumerate(verifs):
-                    with cols[i % 3]:
-                        status = v.get("status", v.get("verdict", "UNVERIFIED"))
-                        cls = "v-true" if status == "TRUE" else "v-false" if status == "FALSE" else ""
-                        st.markdown(f"<div class='verif-card {cls}'><div style='font-weight:800;color:#0f172a'>{status}</div><div style='margin-top:6px'>{v.get('claim','')}</div><div style='margin-top:6px;color:#64748b;font-size:12px'>Source: {v.get('source','N/A')}</div></div>", unsafe_allow_html=True)
-            else:
-                st.info("No external verification matches found.")
+                    response = requests.post(API,json={"text":text,"source":source})
+                    res = response.json()
 
-            st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-            st.success("Analysis complete")
+                    proc_time = round(time.time()-start_time,2)
+
+                    label = res["prediction"]["prediction"]
+                    confidence = res["prediction"]["confidence"]
+
+                    explanation = res["explanation"]
+                    suspicious = res["suspicious_phrases"]
+                    trusted = res["trusted_source"]
+
+                    # ----- UPDATE STATS -----
+
+                    if label.upper()=="FAKE":
+                        st.session_state.stats["fake"]+=1
+                    else:
+                        st.session_state.stats["real"]+=1
+
+                    st.session_state.stats["claims"]+=len(suspicious)
+
+                    # ----- SAVE HISTORY -----
+
+                    st.session_state.history.append({
+                        "Time":time.strftime("%H:%M:%S"),
+                        "Source":source,
+                        "Result":label,
+                        "Confidence":confidence,
+                        "Text":text[:80]+"..."
+                    })
+
+                    # ----- RESULT -----
+
+                    st.markdown("### Analysis Result")
+
+                    if label.upper()=="FAKE":
+                        st.error(f"🚩 Prediction: {label}")
+                    else:
+                        st.success(f"✅ Prediction: {label}")
+
+                    st.progress(confidence,text=f"Model Confidence: {int(confidence*100)}%")
+
+                    st.caption(f"Processing Time: {proc_time} seconds")
+
+                    # ----- AI EXPLANATION -----
+
+                    st.markdown("### AI Explanation")
+
+                    if explanation:
+                        for e in explanation:
+                            st.info(e)
+
+                    # ----- SUSPICIOUS CLAIMS -----
+
+                    if suspicious:
+
+                        st.markdown("### Suspicious Claims Detected")
+
+                        for phrase in suspicious:
+                            st.markdown(
+                                f"<div class='suspicious'>{phrase}</div>",
+                                unsafe_allow_html=True
+                            )
+
+                    else:
+
+                        st.success("No suspicious phrases detected")
+
+                    # ----- SOURCE TRUST -----
+
+                    st.markdown("### Source Credibility")
+
+                    if trusted:
+                         st.markdown(
+                            "<div class='trusted'>✔ Trusted News Source</div>",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            "<div class='untrusted'>⚠ Unverified or Suspicious Source</div>",
+                            unsafe_allow_html=True
+                        )
+
+                except Exception as e:
+
+                    st.error("Backend API not running")
+                    st.write(e)
+
+        else:
+
+            st.info("Enter article text and click **Run Analysis**")
+
+# ---------------- OVERVIEW PAGE ---------------- #
+
+def show_overview():
+
+    st.title("📊 System Analytics")
+
+    m1,m2,m3,m4 = st.columns(4)
+
+    total = st.session_state.stats["fake"] + st.session_state.stats["real"]
+
+    m1.metric("Total Articles",total)
+    m2.metric("Fake News",st.session_state.stats["fake"])
+    m3.metric("Real News",st.session_state.stats["real"])
+    m4.metric("Claims Flagged",st.session_state.stats["claims"])
+
+    st.markdown("---")
+
+    if st.session_state.history:
+
+        df = pd.DataFrame(st.session_state.history)
+
+        st.subheader("Fake vs Real Distribution")
+
+        chart_data = df["Result"].value_counts()
+
+        st.bar_chart(chart_data)
+
+        # Pie chart
+        fig, ax = plt.subplots()
+        chart_data.plot.pie(autopct='%1.1f%%',ax=ax)
+        ax.set_ylabel("")
+        st.pyplot(fig)
+
+    else:
+
+        st.info("No analytics available yet")
+
+# ---------------- HISTORY PAGE ---------------- #
+
+def show_history():
+
+    st.title("🕒 Analysis History")
+
+    if st.session_state.history:
+
+        df = pd.DataFrame(st.session_state.history).iloc[::-1]
+
+        search = st.text_input("Search history")
+
+        if search:
+
+            df = df[
+                df["Source"].str.contains(search,case=False) |
+                df["Text"].str.contains(search,case=False)
+            ]
+
+        st.dataframe(df,use_container_width=True)
+
+        csv = df.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            "Download CSV",
+            csv,
+            "analysis_history.csv",
+            "text/csv"
+        )
+
+    else:
+
+        st.info("No analysis performed yet")
+
+# ---------------- ROUTER ---------------- #
+
+if page=="🚀 Analyze News":
+    show_analyze()
+
+elif page=="📊 System Overview":
+    show_overview()
+
+elif page=="🕒 Analysis History":
+    show_history()
